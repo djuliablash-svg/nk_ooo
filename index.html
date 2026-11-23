@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NK — Доступ к гайду</title>
+
+  <!-- Google Fonts: Montserrat и Inter для чистой геометрической типографики -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,800;1,900&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Montserrat', 'sans-serif'],
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            space: '#050507',
+            flame: '#FF2A00',
+            muted: '#A1A1AA',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* Базовые настройки документа: глубокий чёрный космический фон */
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      overflow-x: hidden;
+      background-color: #050507;
+      color: #FFFFFF;
+      font-family: 'Montserrat', 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Фоновый Canvas со звёздным небом */
+    #cosmicCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Декоративная космическая дымка снизу */
+    .nebula-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 85% 42% at 50% 104%, rgba(255, 255, 255, 0.075) 0%, rgba(161, 161, 170, 0.03) 40%, rgba(5, 5, 7, 0) 75%),
+        radial-gradient(ellipse 55% 35% at 15% 88%, rgba(255, 255, 255, 0.04) 0%, rgba(5, 5, 7, 0) 70%),
+        radial-gradient(ellipse 55% 35% at 85% 85%, rgba(255, 255, 255, 0.04) 0%, rgba(5, 5, 7, 0) 70%);
+    }
+
+    /* Орбитальные линии и вспышка в правом верхнем углу */
+    .orbit-corner {
+      position: fixed;
+      top: -24px;
+      right: -24px;
+      width: min(460px, 85vw);
+      height: auto;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.92;
+    }
+
+    /* Прозрачные поля ввода с тонкой белой обводкой и белым текстом */
+    .nk-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: 'Inter', 'Montserrat', sans-serif;
+      font-size: 15px;
+      line-height: 1.4;
+      color: #FFFFFF;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+
+    .nk-input::placeholder {
+      color: rgba(255, 255, 255, 0.42);
+    }
+
+    .nk-input:hover {
+      border-color: rgba(255, 255, 255, 0.72);
+    }
+
+    .nk-input:focus {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: #FFFFFF;
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.25);
+    }
+
+    /* Состояние ошибки валидации */
+    .nk-input.input-error {
+      border-color: #FF4D2E;
+      box-shadow: 0 0 12px rgba(255, 42, 0, 0.35);
+      background: rgba(255, 42, 0, 0.06);
+    }
+
+    /* Переопределение автозаполнения браузера */
+    .nk-input:-webkit-autofill,
+    .nk-input:-webkit-autofill:hover,
+    .nk-input:-webkit-autofill:focus {
+      -webkit-text-fill-color: #FFFFFF;
+      -webkit-box-shadow: 0 0 0px 1000px #0B0B0F inset;
+      transition: background-color 5000s ease-in-out 0s;
+    }
+
+    /* Прозрачные чипсы выбора источника трафика */
+    .nk-chip {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: #FFFFFF;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-family: 'Montserrat', 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nk-chip:hover {
+      border-color: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .nk-chip:active {
+      transform: scale(0.97);
+    }
+
+    .nk-chip.active {
+      border-color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.3);
+      font-weight: 600;
+    }
+
+    /* Главная красно-оранжевая кнопка (#FF2A00) со свечением и подчёркнутым белым текстом */
+    .nk-cta-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-width: 240px;
+      width: 100%;
+      max-width: 310px;
+      background-color: #FF2A00;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 12px;
+      padding: 16px 28px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+      text-decoration-thickness: 2px;
+      box-shadow: 0 0 28px rgba(255, 42, 0, 0.55), 0 8px 24px rgba(255, 42, 0, 0.35);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.22s ease, background-color 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nk-cta-btn:hover:not(:disabled) {
+      background-color: #FF3B14;
+      box-shadow: 0 0 36px rgba(255, 42, 0, 0.78), 0 10px 28px rgba(255, 42, 0, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .nk-cta-btn:active:not(:disabled) {
+      transform: translateY(0) scale(0.99);
+    }
+
+    .nk-cta-btn:disabled {
+      opacity: 0.75;
+      cursor: not-allowed;
+    }
+
+    /* Плавное раскрытие поля "Другое" */
+    .collapse-box {
+      display: grid;
+      grid-template-rows: 0fr;
+      opacity: 0;
+      margin-top: 0;
+      transition: grid-template-rows 0.28s ease, opacity 0.22s ease, margin-top 0.28s ease;
+    }
+
+    .collapse-box.open {
+      grid-template-rows: 1fr;
+      opacity: 1;
+      margin-top: 12px;
+    }
+
+    .collapse-inner {
+      overflow: hidden;
+      padding: 2px;
+    }
+
+    /* Переключение экранов */
+    .screen-hidden {
+      display: none;
+    }
+
+    .screen-visible {
+      display: block;
+      animation: fadeSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Спиннер внутри кнопки при отправке */
+    @keyframes spinLoader {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #FFFFFF;
+      border-radius: 50%;
+      animation: spinLoader 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    /* Мягкое мерцание вспышки на орбите */
+    @keyframes flarePulse {
+      0%, 100% { opacity: 0.92; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.06); }
+    }
+
+    .star-flare {
+      transform-origin: 215px 98px;
+      animation: flarePulse 4.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="relative min-h-screen flex flex-col justify-between selection:bg-white selection:text-[#050507]">
+
+  <!-- Слой 0: Анимированный Canvas звёздного неба -->
+  <canvas id="cosmicCanvas" aria-hidden="true"></canvas>
+
+  <!-- Слой 1: Мягкая космическая туманность снизу -->
+  <div class="nebula-overlay" aria-hidden="true"></div>
+
+  <!-- Слой 1: Орбитальные линии и белая 4-лучевая вспышка в правом верхнем углу -->
+  <svg class="orbit-corner" viewBox="0 0 420 280" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <radialGradient id="flareGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95" />
+        <stop offset="28%" stop-color="#FFFFFF" stop-opacity="0.38" />
+        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+      </radialGradient>
+      <linearGradient id="orbitStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.06" />
+        <stop offset="48%" stop-color="#FFFFFF" stop-opacity="0.45" />
+        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.08" />
+      </linearGradient>
+    </defs>
+
+    <!-- Тонкие орбиты -->
+    <ellipse cx="315" cy="145" rx="220" ry="52" transform="rotate(24 315 145)" stroke="url(#orbitStroke)" stroke-width="1" />
+    <ellipse cx="325" cy="128" rx="205" ry="38" transform="rotate(17 325 128)" stroke="url(#orbitStroke)" stroke-width="0.85" stroke-opacity="0.7" />
+    <ellipse cx="300" cy="158" rx="235" ry="64" transform="rotate(30 300 158)" stroke="url(#orbitStroke)" stroke-width="0.75" stroke-opacity="0.55" />
+
+    <!-- Яркая 4-лучевая белая вспышка -->
+    <g class="star-flare">
+      <circle cx="215" cy="98" r="46" fill="url(#flareGlow)" />
+      <path d="M215 44 L218.2 94.8 L269 98 L218.2 101.2 L215 152 L211.8 101.2 L161 98 L211.8 94.8 Z" fill="#FFFFFF" />
+      <path d="M215 74 L216.4 96.6 L239 98 L216.4 99.4 L215 122 L213.6 99.4 L191 98 L213.6 96.6 Z" transform="rotate(45 215 98)" fill="#FFFFFF" fill-opacity="0.82" />
+    </g>
+  </svg>
+
+  <!-- Основной контейнер контента прямо на космическом фоне -->
+  <div class="relative z-10 w-full max-w-[460px] mx-auto px-5 sm:px-6 pt-8 sm:pt-12 pb-8 flex-1 flex flex-col justify-between">
+
+    <!-- Верхний логотип NK (96x96px с растворением фона и резервным SVG) -->
+    <header class="flex justify-center mb-6 sm:mb-7">
+      <div class="relative w-[96px] h-[96px] rounded-full flex items-center justify-center">
+        <img
+          id="brandLogoImg"
+          src="Gemini_Generated_Image_n50fv1n50fv1n50f_2.jpg"
+          alt="NK Logo"
+          style="width: 96px; height: 96px; border-radius: 50%; object-fit: cover; mix-blend-mode: screen; filter: contrast(1.6) brightness(0.95);"
+          onerror="this.style.display='none'; document.getElementById('brandLogoFallback').classList.remove('hidden');"
+        />
+        <!-- Резервный SVG-аналог логотипа: светящийся белый круг с 4 звёздами ромбом и переплетёнными дугами -->
+        <svg
+          id="brandLogoFallback"
+          viewBox="0 0 120 120"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          class="hidden w-[96px] h-[96px]"
+          aria-label="NK Emblem"
+        >
+          <defs>
+            <filter id="logoGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <!-- Светящееся кольцо -->
+          <circle cx="60" cy="60" r="46" stroke="#93C5FD" stroke-opacity="0.45" stroke-width="5.5" filter="url(#logoGlow)" />
+          <circle cx="60" cy="60" r="46" stroke="#FFFFFF" stroke-width="2.4" filter="url(#logoGlow)" />
+          <!-- Звёздная пыль -->
+          <circle cx="24" cy="36" r="1.1" fill="#FFFFFF" opacity="0.85" />
+          <circle cx="96" cy="38" r="1.2" fill="#BAE6FD" opacity="0.9" />
+          <circle cx="22" cy="80" r="1" fill="#BAE6FD" opacity="0.8" />
+          <circle cx="94" cy="84" r="1.2" fill="#FFFFFF" opacity="0.85" />
+          <!-- Переплетённые дуги в центре -->
+          <path d="M44 53 C53 58, 67 58, 76 53" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" filter="url(#logoGlow)" />
+          <path d="M56 44 C50 54, 52 66, 58 73" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" filter="url(#logoGlow)" />
+          <!-- 4 звезды ромбом -->
+          <polygon points="60,25 63.6,34.8 73.8,34.8 65.6,41 68.7,50.8 60,44.8 51.3,50.8 54.4,41 46.2,34.8 56.4,34.8" fill="#FFFFFF" filter="url(#logoGlow)" />
+          <polygon points="60,69 63.6,78.8 73.8,78.8 65.6,85 68.7,94.8 60,88.8 51.3,94.8 54.4,85 46.2,78.8 56.4,78.8" fill="#FFFFFF" filter="url(#logoGlow)" />
+          <polygon points="36,47 39.6,56.8 49.8,56.8 41.6,63 44.7,72.8 36,66.8 27.3,72.8 30.4,63 22.2,56.8 32.4,56.8" fill="#FFFFFF" filter="url(#logoGlow)" />
+          <polygon points="84,47 87.6,56.8 97.8,56.8 89.6,63 92.7,72.8 84,66.8 75.3,72.8 78.4,63 70.2,56.8 80.4,56.8" fill="#FFFFFF" filter="url(#logoGlow)" />
+        </svg>
+      </div>
+    </header>
+
+    <!-- Центральная область экранов -->
+    <main class="w-full my-auto">
+
+      <!-- =========================================================
+           ЭКРАН 1: АНКЕТА
+           ========================================================= -->
+      <section id="screenForm" class="screen-visible" aria-labelledby="formHeading">
+
+        <!-- Заголовок и подзаголовок -->
+        <div class="text-center mb-8">
+          <h1 id="formHeading" class="font-display text-[24px] sm:text-[28px] font-extrabold uppercase tracking-[0.04em] leading-[1.15] text-white">
+            ДОСТУП К ГАЙДУ
+          </h1>
+          <p class="mt-3 text-[13px] sm:text-[14px] font-normal tracking-[0.02em] leading-[1.55] text-white/80 max-w-[340px] mx-auto">
+            Заполни короткую анкету — и ссылка на гайд откроется сразу после отправки
+          </p>
+        </div>
+
+        <!-- Форма прямо на космическом фоне -->
+        <form id="leadForm" novalidate class="space-y-5">
+
+          <!-- Поле 1: Имя -->
+          <div>
+            <label for="inputName" class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.06em] text-white mb-2">
+              <span class="text-white/85 text-[14px] leading-none" aria-hidden="true">✦</span>
+              <span>Имя</span>
+            </label>
+            <input
+              id="inputName"
+              name="name"
+              type="text"
+              autocomplete="name"
+              required
+              placeholder="Как к тебе обращаться?"
+              class="nk-input"
+            />
+            <p id="errorName" class="hidden mt-1.5 text-[12px] text-[#FF6B52]">
+              Пожалуйста, укажи своё имя.
+            </p>
+          </div>
+
+          <!-- Поле 2: Телефон -->
+          <div>
+            <label for="inputPhone" class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.06em] text-white mb-2">
+              <span class="text-white/85 text-[14px] leading-none" aria-hidden="true">✦</span>
+              <span>Телефон</span>
+            </label>
+            <input
+              id="inputPhone"
+              name="phone"
+              type="tel"
+              autocomplete="tel"
+              inputmode="tel"
+              required
+              placeholder="+7 (999) 000-00-00"
+              class="nk-input"
+            />
+            <p id="errorPhone" class="hidden mt-1.5 text-[12px] text-[#FF6B52]">
+              Введи корректный номер телефона.
+            </p>
+          </div>
+
+          <!-- Поле 3: Telegram -->
+          <div>
+            <label for="inputTelegram" class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.06em] text-white mb-2">
+              <span class="text-white/85 text-[14px] leading-none" aria-hidden="true">✦</span>
+              <span>Telegram</span>
+            </label>
+            <input
+              id="inputTelegram"
+              name="telegram"
+              type="text"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              required
+              placeholder="@username"
+              class="nk-input"
+            />
+            <p id="errorTelegram" class="hidden mt-1.5 text-[12px] text-[#FF6B52]">
+              Укажи свой ник в Telegram, например @username.
+            </p>
+          </div>
+
+          <!-- Поле 4: Откуда узнали о нас? -->
+          <div>
+            <div class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.06em] text-white mb-2.5">
+              <span class="text-white/85 text-[14px] leading-none" aria-hidden="true">✦</span>
+              <span>Откуда узнали о нас?</span>
+            </div>
+
+            <div id="sourceChips" class="flex flex-wrap gap-2" role="radiogroup" aria-label="Откуда узнали о нас?">
+              <button type="button" class="nk-chip" data-value="Instagram / Reels" role="radio" aria-checked="false">Instagram / Reels</button>
+              <button type="button" class="nk-chip" data-value="Telegram" role="radio" aria-checked="false">Telegram</button>
+              <button type="button" class="nk-chip" data-value="Threads" role="radio" aria-checked="false">Threads</button>
+              <button type="button" class="nk-chip" data-value="Рекомендация" role="radio" aria-checked="false">Рекомендация</button>
+              <button type="button" class="nk-chip" data-value="Другое" role="radio" aria-checked="false">Другое</button>
+            </div>
+
+            <!-- Дополнительное поле при выборе "Другое" -->
+            <div id="otherSourceWrap" class="collapse-box">
+              <div class="collapse-inner">
+                <input
+                  id="inputOtherSource"
+                  name="otherSource"
+                  type="text"
+                  placeholder="Напиши, откуда именно ты о нас узнал(а)..."
+                  class="nk-input"
+                />
+              </div>
+            </div>
+
+            <p id="errorSource" class="hidden mt-1.5 text-[12px] text-[#FF6B52]">
+              Пожалуйста, выбери один из вариантов выше.
+            </p>
+          </div>
+
+          <!-- Сообщение об ошибке сети (без alert) -->
+          <div id="formNotice" class="hidden rounded-[12px] border border-[#FF4D2E]/70 bg-[#FF2A00]/10 px-4 py-3 text-[13px] text-white text-center"></div>
+
+          <!-- Главная кнопка отправки -->
+          <div class="pt-4 flex flex-col items-center">
+            <button id="submitBtn" type="submit" class="nk-cta-btn">
+              <span id="submitBtnText">ПОЛУЧИТЬ ГАЙД</span>
+              <span id="submitBtnSpinner" class="btn-spinner hidden" aria-hidden="true"></span>
+            </button>
+            <span class="mt-2.5 text-[11.5px] tracking-[0.08em] text-[#A1A1AA]">
+              кликабельно
+            </span>
+          </div>
+
+        </form>
+      </section>
+
+      <!-- =========================================================
+           ЭКРАН 2: ВЫДАЧА ГАЙДА
+           ========================================================= -->
+      <section id="screenSuccess" class="screen-hidden text-center py-6" aria-labelledby="successHeading">
+
+        <!-- Значок успешного открытия доступа -->
+        <div class="flex justify-center mb-6">
+          <div class="w-16 h-16 rounded-full border border-white/60 flex items-center justify-center shadow-[0_0_24px_rgba(255,255,255,0.22)]">
+            <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+        </div>
+
+        <h2 id="successHeading" class="font-display text-[28px] sm:text-[34px] font-extrabold uppercase tracking-[0.04em] leading-[1.15] text-white">
+          ДОСТУП ОТКРЫТ
+        </h2>
+
+        <p class="mt-4 text-[13.5px] sm:text-[14.5px] font-normal tracking-[0.02em] leading-[1.65] text-white/85 max-w-[340px] mx-auto">
+          Спасибо за ответы! Нажми на кнопку ниже, чтобы перейти к посту и забрать гайд.
+        </p>
+
+        <!-- Кнопка перехода к гайду -->
+        <div class="mt-9 flex flex-col items-center">
+          <a
+            id="guideLinkBtn"
+            href="https://t.me/m/y6tv-aeuODRi"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="nk-cta-btn"
+          >
+            <span>ПЕРЕЙТИ К ГАЙДУ</span>
+          </a>
+          <span class="mt-2.5 text-[11.5px] tracking-[0.08em] text-[#A1A1AA]">
+            кликабельно
+          </span>
+        </div>
+
+        <!-- Кнопка сброса для тестирования -->
+        <div class="mt-10">
+          <button
+            id="resetFormBtn"
+            type="button"
+            class="text-[12px] text-white/45 hover:text-white/85 transition-colors underline underline-offset-4 bg-transparent border-0 cursor-pointer p-2"
+          >
+            Заполнить анкету заново
+          </button>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Фирменный футер -->
+    <footer class="mt-10 pt-4 text-center">
+      <p class="text-[12px] sm:text-[13px] tracking-[0.02em] text-white/90">
+        <span class="font-display font-black italic tracking-[-0.02em] text-white mr-1">NK</span>
+        <span class="text-white/60 mx-1">|</span>
+        <span class="font-normal text-white/85">онлайн-школа маркетинга и личного бренда</span>
+      </p>
+    </footer>
+
+  </div>
+
+  <script>
+    /* =====================================================================
+       КОНФИГУРАЦИЯ (GOOGLE APPS SCRIPT И ССЫЛКА НА ГАЙД)
+       ===================================================================== */
+    const CONFIG = {
+      GOOGLE_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyKffk0nE-StZbx_z3Co2jdc6ckSshzsjdQeicSmWbQhO9NybZQywkTsVztk0e3rrPM8w/exec",
+      GUIDE_URL: "https://t.me/m/y6tv-aeuODRi"
+    };
+
+    /* =====================================================================
+       АНИМИРОВАННЫЙ КОСМИЧЕСКИЙ ФОН (CANVAS: МЕРЦАЮЩИЕ ЗВЁЗДЫ)
+       ===================================================================== */
+    function initStarfield() {
+      const canvas = document.getElementById('cosmicCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let width = 0;
+      let height = 0;
+      let stars = [];
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      function buildStars() {
+        const area = width * height;
+        const count = Math.min(240, Math.max(95, Math.floor(area / 6200)));
+        stars = [];
+
+        for (let i = 0; i < count; i++) {
+          const isBright = Math.random() < 0.14;
+          stars.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            radius: isBright ? Math.random() * 1.35 + 0.7 : Math.random() * 0.85 + 0.25,
+            baseAlpha: isBright ? Math.random() * 0.45 + 0.45 : Math.random() * 0.35 + 0.15,
+            twinkleSpeed: Math.random() * 0.015 + 0.004,
+            phase: Math.random() * Math.PI * 2,
+            driftY: -(Math.random() * 0.06 + 0.015)
+          });
+        }
+      }
+
+      function resizeCanvas() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        buildStars();
+      }
+
+      function renderStars() {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#050507';
+        ctx.fillRect(0, 0, width, height);
+
+        for (let i = 0; i < stars.length; i++) {
+          const s = stars[i];
+          s.phase += s.twinkleSpeed;
+          s.y += s.driftY;
+
+          if (s.y < -4) {
+            s.y = height + 4;
+            s.x = Math.random() * width;
+          }
+
+          const alpha = Math.max(0.06, Math.min(1, s.baseAlpha + Math.sin(s.phase) * 0.28));
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(3)})`;
+          ctx.fill();
+        }
+
+        requestAnimationFrame(renderStars);
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      renderStars();
+    }
+
+    /* =====================================================================
+       ЛОГИКА АНКЕТЫ, ВАЛИДАЦИИ, ПЕРЕКЛЮЧЕНИЯ ЭКРАНОВ И GOOGLE ТАБЛИЦ
+       ===================================================================== */
+    function initLeadFlow() {
+      const form = document.getElementById('leadForm');
+      const screenForm = document.getElementById('screenForm');
+      const screenSuccess = document.getElementById('screenSuccess');
+
+      const inputName = document.getElementById('inputName');
+      const inputPhone = document.getElementById('inputPhone');
+      const inputTelegram = document.getElementById('inputTelegram');
+      const inputOtherSource = document.getElementById('inputOtherSource');
+      const otherSourceWrap = document.getElementById('otherSourceWrap');
+      const sourceChips = Array.from(document.querySelectorAll('.nk-chip'));
+
+      const errorName = document.getElementById('errorName');
+      const errorPhone = document.getElementById('errorPhone');
+      const errorTelegram = document.getElementById('errorTelegram');
+      const errorSource = document.getElementById('errorSource');
+      const formNotice = document.getElementById('formNotice');
+
+      const submitBtn = document.getElementById('submitBtn');
+      const submitBtnText = document.getElementById('submitBtnText');
+      const submitBtnSpinner = document.getElementById('submitBtnSpinner');
+
+      const guideLinkBtn = document.getElementById('guideLinkBtn');
+      const resetFormBtn = document.getElementById('resetFormBtn');
+
+      let selectedSource = '';
+
+      if (CONFIG.GUIDE_URL && CONFIG.GUIDE_URL.trim() !== '') {
+        guideLinkBtn.setAttribute('href', CONFIG.GUIDE_URL.trim());
+      }
+
+      /* --- Автоформатирование номера телефона --- */
+      inputPhone.addEventListener('input', (e) => {
+        const raw = e.target.value;
+        const digits = raw.replace(/\D/g, '');
+
+        if (digits.length > 0 && (digits[0] === '7' || digits[0] === '8' || digits[0] === '9')) {
+          let normalized = digits;
+          if (normalized[0] === '8') normalized = '7' + normalized.slice(1);
+          if (normalized[0] === '9') normalized = '7' + normalized;
+          normalized = normalized.slice(0, 11);
+
+          let formatted = '+7';
+          if (normalized.length > 1) formatted += ' (' + normalized.slice(1, 4);
+          if (normalized.length >= 4) formatted += ') ' + normalized.slice(4, 7);
+          if (normalized.length >= 7) formatted += '-' + normalized.slice(7, 9);
+          if (normalized.length >= 9) formatted += '-' + normalized.slice(9, 11);
+
+          e.target.value = formatted;
+        }
+        hideFieldError(inputPhone, errorPhone);
+      });
+
+      /* --- Автодобавление "@" к нику в Telegram --- */
+      function normalizeTelegram(value) {
+        let cleaned = value.replace(/\s+/g, '');
+        if (!cleaned) return '';
+        cleaned = cleaned.replace(/^https?:\/\/(t\.me|telegram\.me)\//i, '');
+        cleaned = cleaned.replace(/^@+/, '');
+        return cleaned ? '@' + cleaned : '';
+      }
+
+      inputTelegram.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/\s+/g, '');
+        if (val.length > 0 && !val.startsWith('@')) {
+          e.target.value = '@' + val.replace(/^@+/, '');
+        } else {
+          e.target.value = val;
+        }
+        hideFieldError(inputTelegram, errorTelegram);
+      });
+
+      inputTelegram.addEventListener('blur', (e) => {
+        e.target.value = normalizeTelegram(e.target.value);
+      });
+
+      inputName.addEventListener('input', () => hideFieldError(inputName, errorName));
+      inputOtherSource.addEventListener('input', () => {
+        inputOtherSource.classList.remove('input-error');
+        errorSource.classList.add('hidden');
+      });
+
+      /* --- Выбор чипсов источника трафика --- */
+      sourceChips.forEach((chip) => {
+        chip.addEventListener('click', () => {
+          sourceChips.forEach((c) => {
+            c.classList.remove('active');
+            c.setAttribute('aria-checked', 'false');
+          });
+
+          chip.classList.add('active');
+          chip.setAttribute('aria-checked', 'true');
+          selectedSource = chip.dataset.value || '';
+          errorSource.classList.add('hidden');
+
+          if (selectedSource === 'Другое') {
+            otherSourceWrap.classList.add('open');
+            setTimeout(() => inputOtherSource.focus(), 180);
+          } else {
+            otherSourceWrap.classList.remove('open');
+            inputOtherSource.classList.remove('input-error');
+          }
+        });
+      });
+
+      /* --- Вспомогательные функции UI --- */
+      function showFieldError(inputEl, errorEl, text) {
+        if (inputEl) inputEl.classList.add('input-error');
+        if (text) errorEl.textContent = text;
+        errorEl.classList.remove('hidden');
+      }
+
+      function hideFieldError(inputEl, errorEl) {
+        if (inputEl) inputEl.classList.remove('input-error');
+        errorEl.classList.add('hidden');
+      }
+
+      function setLoading(isLoading) {
+        submitBtn.disabled = isLoading;
+        if (isLoading) {
+          submitBtnText.textContent = 'ОТПРАВЛЯЕМ...';
+          submitBtnSpinner.classList.remove('hidden');
+        } else {
+          submitBtnText.textContent = 'ПОЛУЧИТЬ ГАЙД';
+          submitBtnSpinner.classList.add('hidden');
+        }
+      }
+
+      function showNotice(message) {
+        formNotice.textContent = message;
+        formNotice.classList.remove('hidden');
+      }
+
+      function hideNotice() {
+        formNotice.classList.add('hidden');
+        formNotice.textContent = '';
+      }
+
+      function switchToSuccess() {
+        screenForm.classList.remove('screen-visible');
+        screenForm.classList.add('screen-hidden');
+        screenSuccess.classList.remove('screen-hidden');
+        screenSuccess.classList.add('screen-visible');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function switchToForm() {
+        form.reset();
+        selectedSource = '';
+        sourceChips.forEach((c) => {
+          c.classList.remove('active');
+          c.setAttribute('aria-checked', 'false');
+        });
+        otherSourceWrap.classList.remove('open');
+        hideNotice();
+        [
+          [inputName, errorName],
+          [inputPhone, errorPhone],
+          [inputTelegram, errorTelegram],
+          [inputOtherSource, errorSource]
+        ].forEach(([inp, err]) => hideFieldError(inp, err));
+
+        screenSuccess.classList.remove('screen-visible');
+        screenSuccess.classList.add('screen-hidden');
+        screenForm.classList.remove('screen-hidden');
+        screenForm.classList.add('screen-visible');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      /* --- Валидация и отправка данных в Google Таблицу --- */
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideNotice();
+
+        const name = inputName.value.trim();
+        const phone = inputPhone.value.trim();
+        const phoneDigits = phone.replace(/\D/g, '');
+        const telegram = normalizeTelegram(inputTelegram.value);
+        inputTelegram.value = telegram;
+
+        let isValid = true;
+
+        if (name.length < 2) {
+          showFieldError(inputName, errorName, 'Пожалуйста, укажи своё имя.');
+          isValid = false;
+        }
+
+        if (phoneDigits.length < 10) {
+          showFieldError(inputPhone, errorPhone, 'Введи корректный номер телефона.');
+          isValid = false;
+        }
+
+        if (telegram.length < 3 || !telegram.startsWith('@')) {
+          showFieldError(inputTelegram, errorTelegram, 'Укажи свой ник в Telegram, например @username.');
+          isValid = false;
+        }
+
+        let finalSource = selectedSource;
+        if (!selectedSource) {
+          showFieldError(null, errorSource, 'Пожалуйста, выбери один из вариантов выше.');
+          isValid = false;
+        } else if (selectedSource === 'Другое') {
+          const customSource = inputOtherSource.value.trim();
+          if (customSource.length < 2) {
+            showFieldError(inputOtherSource, errorSource, 'Уточни, пожалуйста, откуда ты о нас узнал(а).');
+            isValid = false;
+          } else {
+            finalSource = 'Другое: ' + customSource;
+          }
+        }
+
+        if (!isValid) return;
+
+        setLoading(true);
+
+        const payload = {
+          name: name,
+          phone: phone,
+          telegram: telegram,
+          source: finalSource
+        };
+
+        try {
+          if (CONFIG.GOOGLE_SCRIPT_URL && CONFIG.GOOGLE_SCRIPT_URL.trim() !== '') {
+            await fetch(CONFIG.GOOGLE_SCRIPT_URL.trim(), {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+              },
+              body: JSON.stringify(payload)
+            });
+          } else {
+            await new Promise((resolve) => setTimeout(resolve, 450));
+          }
+
+          setLoading(false);
+          switchToSuccess();
+        } catch (err) {
+          console.error('Ошибка отправки данных:', err);
+          setLoading(false);
+          showNotice('Не удалось отправить анкету. Проверь подключение к интернету и попробуй ещё раз.');
+        }
+      });
+
+      resetFormBtn.addEventListener('click', switchToForm);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initStarfield();
+      initLeadFlow();
+    });
+  </script>
+</body>
+</html>
